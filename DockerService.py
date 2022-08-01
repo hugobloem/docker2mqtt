@@ -1,9 +1,12 @@
 import requests
 import json, yaml
+import logging
 from packaging.version import Version, InvalidVersion
 
+log = logging.getLogger('main')
+
 class DockerService:
-    def __init__(self, image, version=None) -> None:
+    def __init__(self, image, conf, version=None) -> None:
         url = image.split(':')[0]
 
         if version is None:
@@ -17,6 +20,7 @@ class DockerService:
         self.url = url
         self.organisation = organisation
         self.repository = repository
+        self.conf = conf
         self.upToDate = True
 
         try:
@@ -26,7 +30,6 @@ class DockerService:
 
         self.latestAvailableVersion = None
         self.availableTags = None
-        self.github_token = yaml.safe_load(open('config.yml'))['github_token'] # TODO: Change to proper loading
 
     def getAvailableImages(self):
         if self.repository == 'dockerhub':
@@ -47,7 +50,7 @@ class DockerService:
                 results = json.loads(r.text)["results"]
                 tags = [result["name"] for result in results]
             else:
-                print(f"Could not download tags for {self.organisation}/{self.name}. Reason: {r.reason}")
+                log.warning(f"Could not download tags for {self.organisation}/{self.name}. Reason: {r.reason}")
         self.availableTags = tags
 
     def getLinuxServerImages(self):
@@ -55,7 +58,7 @@ class DockerService:
             if r.ok:
                 results = json.loads(r.text)["data"]["repositories"]["linuxserver"]
             else:
-                print(f"Could not download tags for {self.organisation}/{self.name}. Reason: {r.reason}")
+                log.warning(f"Could not download tags for {self.organisation}/{self.name}. Reason: {r.reason}")
         for result in results:
             if result["name"] == self.name:
                 self.availableTags = [result["version"]]
@@ -66,7 +69,7 @@ class DockerService:
     def getGithubImages(self):
         with requests.get(
                 url=f"https://api.github.com/orgs/{self.organisation}/packages/container/{self.name}/versions", 
-                headers={"Accept": "application/vnd.github+json", "Authorization": f"token {self.github_token}"},
+                headers={"Accept": "application/vnd.github+json", "Authorization": f"token {self.conf.githubToken}"},
             ) as r:
             if r.ok:
                 results = r.json()
@@ -78,7 +81,7 @@ class DockerService:
                         else:
                             self.availableTags += [tag[0]]
             else:
-                print(f"Could not download tags for {self.organisation}/{self.name}. Reason: {r.reason}")
+                log.warning(f"Could not download tags for {self.organisation}/{self.name}. Reason: {r.reason}")
 
 
 

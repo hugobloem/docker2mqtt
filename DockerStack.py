@@ -8,11 +8,12 @@ from DockerService import DockerService
 log = logging.getLogger('main')
 
 class DockerStack:
-    def __init__(self, name, stackFile) -> None:
+    def __init__(self, name, stackFile, conf) -> None:
         super().__init__()
         
         self.name = name
         self.stackFile = stackFile
+        self.conf = conf
         self.readStack()
         self.upToDate = {}
 
@@ -31,7 +32,7 @@ class DockerStack:
         for service, val in self.stack["services"].items():
             labels = self.extractLabels(val)
             if labels["enable"]:
-                services[service] = DockerService(val["image"])
+                services[service] = DockerService(val["image"], self.conf)
 
         self.services = services
         log.debug(f"Found services: {list(self.services.keys())}")
