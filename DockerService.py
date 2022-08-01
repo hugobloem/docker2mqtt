@@ -6,7 +6,7 @@ from packaging.version import Version, InvalidVersion
 log = logging.getLogger('main')
 
 class DockerService:
-    def __init__(self, image, conf, version=None) -> None:
+    def __init__(self, stack, image, conf, mqttClient=None, version=None) -> None:
         url = image.split(':')[0]
 
         if version is None:
@@ -16,18 +16,21 @@ class DockerService:
         organisation = url.split('/')[-2] if len(url.split('/')) > 1 else 'library'
         repository = url.split('/')[0] if len(url.split('/')) == 3 else 'dockerhub'
     
+        self.stack = stack
         self.name = name
         self.url = url
         self.organisation = organisation
         self.repository = repository
         self.conf = conf
-        self.upToDate = True
+        self.mqttClient = mqttClient
+        self.mqttServiceTopic = f"{self.conf.mqtt_topic}/{self.stack}/{self.name}"
 
         try:
             self.version = Version(version)
         except (InvalidVersion, TypeError):
             self.version = Version("0.0.0")
 
+        self.setUpToDate(True)
         self.latestAvailableVersion = None
         self.availableTags = None
 
@@ -83,8 +86,6 @@ class DockerService:
             else:
                 log.warning(f"Could not download tags for {self.organisation}/{self.name}. Reason: {r.reason}")
 
-
-
     def extractVersionNumber(self, versionNumber, alldigits=True):
         try:
             version = Version(versionNumber)
@@ -112,6 +113,19 @@ class DockerService:
             self.getAvailableImages()
 
         if self.latestAvailableVersion > self.version:
-            self.upToDate = False
+            self.setUpToDate(False)
         else:
-            self.upToDate = True
+            self.setUpToDate(True)
+
+    def setUpToDate(self, upToDate):
+        self.upToDate = upToDate
+        
+        if self.conf.mqtt:
+            payload = {
+                "state": "OFF" if upToDate else "ON",
+                "version": str(self.version),
+            }
+            if not upToDate:
+                payload["available_version"] = str(self.latestAvailableVersion)
+
+            self.mqttClient.publish(f"{self.mqttServiceTopic}", payload=json.dumps(payload))

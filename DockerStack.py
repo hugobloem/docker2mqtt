@@ -1,6 +1,5 @@
 import os
 import yaml
-import docker
 import logging
 
 from DockerService import DockerService
@@ -8,7 +7,7 @@ from DockerService import DockerService
 log = logging.getLogger('main')
 
 class DockerStack:
-    def __init__(self, name, stackFile, conf) -> None:
+    def __init__(self, name, stackFile, conf, mqttClient=None) -> None:
         super().__init__()
         
         self.name = name
@@ -16,6 +15,12 @@ class DockerStack:
         self.conf = conf
         self.readStack()
         self.upToDate = {}
+
+        if conf.mqtt:
+            self.mqttClient = mqttClient
+            self.mqttStackTopic = f"docker2mqtt/{self.name}"
+            self.mqttClient.subscribe(f"{self.mqttStackTopic}/#")
+            log.debug(f"MQTT subscribe to '{self.mqttStackTopic}/#'")
 
     def readStack(self):
         log.debug(f"Reading stack file {self.stackFile}")
@@ -32,7 +37,7 @@ class DockerStack:
         for service, val in self.stack["services"].items():
             labels = self.extractLabels(val)
             if labels["enable"]:
-                services[service] = DockerService(val["image"], self.conf)
+                services[service] = DockerService(self.name, val["image"], self.conf, self.mqttClient)
 
         self.services = services
         log.debug(f"Found services: {list(self.services.keys())}")
