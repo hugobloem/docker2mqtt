@@ -29,7 +29,9 @@ class DockerStack:
     def getServices(self):
         services = {}
         for service, val in self.stack["services"].items():
-            services[service] = DockerService(val["image"])
+            labels = self.extractLabels(val)
+            if labels["enable"]:
+                services[service] = DockerService(val["image"])
 
         self.services = services
         log.debug(f"Found services: {list(self.services.keys())}")
@@ -49,3 +51,16 @@ class DockerStack:
 
     def pushToDocker(self):
         os.system(f"docker stack deploy -c {self.stackFile} {self.name}")
+
+    def extractLabels(self, config):
+        labels = {
+            "enable": True,
+        }
+
+        if "labels" in config:
+            confLabels = config["labels"]
+            for label in confLabels:
+                if label.startswith("docker2mqtt."):
+                    labels[label.split("=")[0].replace("docker2mqtt.", "")] = eval(label.split("=")[1])
+        
+        return labels
