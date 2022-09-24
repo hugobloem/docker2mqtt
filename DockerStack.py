@@ -61,14 +61,19 @@ class DockerStack:
         log.debug(f"Found services: {list(self.services.keys())}")
 
 
-    def updateCheck(self):
+    def updateCheck(self, service_name="all"):
         '''
         Check whether newer images are available.
         '''
-        for name, service in self.services.items():
-            service.updateCheck()
-            self.upToDate[name] = service.upToDate
-        self.updateable = [k for k, v in self.upToDate.items() if not v]
+        if service_name == "all":
+            for name, service in self.services.items():
+                service.updateCheck()
+                self.upToDate[name] = service.upToDate
+            self.updateable = [k for k, v in self.upToDate.items() if not v]
+        else:
+            self.services[service_name].updateCheck()
+            self.upToDate[service_name] = self.services[service_name].upToDate
+            self.updateable = [k for k, v in self.upToDate.items() if not v]
         log.debug(f"Updateable services: {self.updateable}")
 
 
@@ -134,7 +139,8 @@ class DockerStack:
             payload["update_stack"] = True
 
         if topic == f"{self.mqttStackTopic}/update":
-            self.updateCheck()
+
+            self.updateCheck(payload["service"])
 
             if payload["update_stack"]:
 
@@ -150,7 +156,7 @@ class DockerStack:
     
     def info_handler(self, client, userdata, message):
         '''
-        Handle info messages.
+        Handle info messages. TODO: send meaningful information
         '''
         payload = {
             "service": "all",
