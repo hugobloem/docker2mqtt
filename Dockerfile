@@ -1,6 +1,5 @@
 FROM alpine
-RUN curl -fsSL https://get.docker.com | sh
-RUN apk add --no-cache python3 py3-pip
+RUN apk add --no-cache python3 py3-pip docker-cli
 ADD requirements.txt .
 RUN pip install -r requirements.txt
 ADD main.py .
