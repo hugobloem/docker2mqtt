@@ -5,6 +5,7 @@ import paho.mqtt.client as mqtt
 
 from DockerStack import DockerStack
 import utils
+import time
 
 parser = ArgumentParser()
 parser.add_argument("-i", "--stacksDir", help="Directory containing stack files", required=True)
@@ -36,13 +37,18 @@ if conf.mqtt:
     client.connect("rpi0.local", 1883, 60)
     client.loop_start()
 
+# Initialise stacks
 for stackFile in stackFiles:
     stack = DockerStack(stackFile.split('.')[0], stacksDir + stackFile, conf, client if conf.mqtt else None)
     stack.getServices()
 
-    stack.updateCheck()
-    for service in stack.updateable:
-        log.info(f"Updating {service}...")
-        stack.updateStackFile(service)
+#     stack.updateCheck()
+#     for service in stack.updateable:
+#         log.info(f"Updating {service}...")
+#         stack.updateStackFile(service)
 
     # stack.pushToDocker()
+
+# Start a forever loop
+while True:
+    time.sleep(1)

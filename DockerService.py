@@ -95,9 +95,10 @@ class DockerService:
 
     def getValidVersions(self):
         if self.availableTags is None:
-            raise ValueError
-        processedVersions = [self.extractVersionNumber(imageVersion) for imageVersion in self.availableTags]
-        self.availableVersions = [Version(key) for key, val in zip(self.availableTags, processedVersions) if val is not None]
+            log.warning(f"No available tags for {self.organisation}/{self.name}.")
+        else:
+            processedVersions = [self.extractVersionNumber(imageVersion) for imageVersion in self.availableTags]
+            self.availableVersions = [Version(key) for key, val in zip(self.availableTags, processedVersions) if val is not None]
 
     def getLatestVersion(self, branch='release'):
         images = self.availableVersions
