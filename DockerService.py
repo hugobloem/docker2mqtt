@@ -125,6 +125,7 @@ class DockerService:
             payload = {
                 "state": "OFF" if upToDate else "ON",
                 "version": str(self.version),
+                "available_version": str(self.version),
             }
             if not upToDate:
                 payload["available_version"] = str(self.latestAvailableVersion)
