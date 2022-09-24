@@ -1,6 +1,7 @@
 import os
 import yaml
 import logging
+import json
 
 from DockerService import DockerService
 
@@ -24,7 +25,8 @@ class DockerStack:
             log.debug(f"MQTT subscribe to '{self.mqttStackTopic}/#'")
 
             # Add callbacks
-            self.mqttClient.message_callback_add(f'{self.mqttStackTopic}/update', self.updater)
+            self.mqttClient.message_callback_add(f'{self.mqttStackTopic}/update', self.update_handler)
+            self.mqttClient.message_callback_add(f'{self.mqttStackTopic}/info', self.info_handler)
 
 
     def readStack(self):
@@ -80,8 +82,13 @@ class DockerStack:
         log.info(f"Updated {service} to {newImage}")
 
 
-    def pushToDocker(self):
+    def deployToDocker(self):
+        '''
+        Deploy the docker stack and set service to be up to date.
+        '''
         os.system(f"docker stack deploy -c {self.stackFile} {self.name}")
+        for service in self.updateable:
+            self.services[service].setUpToDate(True)
 
 
     def extractLabels(self, config):
@@ -99,9 +106,70 @@ class DockerStack:
                     labels[label.split("=")[0].replace("docker2mqtt.", "")] = eval(label.split("=")[1])
         
         return labels
-        
 
-    def update(self):
+
+    def update_handler(self, client, userdata, message):
         '''
-        Handle messages and apply updates
+        Handle update messages.
         '''
+
+        payload = {
+            "service": "all",
+            "update_stack": False,
+            "deploy": False,
+        }
+
+        topic = message.topic
+        try:
+            payload.update(json.loads(message.payload.decode("utf-8")))
+        except:
+            log.warning(f"Could not decode payload for topic {topic}\n{message.payload}")
+            return
+
+        log.debug(f"MQTT message received: {topic} {message.payload}")
+
+        assert topic.startswith(self.mqttStackTopic)
+
+        if payload["deploy"]:
+            payload["update_stack"] = True
+
+        if topic == f"{self.mqttStackTopic}/update":
+            self.updateCheck()
+
+            if payload["update_stack"]:
+
+                if payload["service"] == "all":
+                    for service in self.updateable:
+                        self.updateStackFile(service)
+                else:
+                    self.updateStackFile(payload["service"])
+
+            if payload["deploy"]:
+                self.deployToDocker()
+
+    
+    def info_handler(self, client, userdata, message):
+        '''
+        Handle info messages.
+        '''
+        payload = {
+            "service": "all",
+        }
+
+        topic = message.topic
+        try:
+            payload.update(json.loads(message.payload.decode("utf-8")))
+        except:
+            log.warning(f"Could not decode payload for topic {topic}\n{message.payload}")
+            return
+
+        log.debug(f"MQTT message received: {topic} {message.payload}")
+
+        assert topic.startswith(self.mqttStackTopic)
+
+        if topic == f"{self.mqttStackTopic}/info":
+            if payload["service"] == "all":
+                for service in self.services:
+                    log.info(f"Sending info for {service}")
+            else:
+                log.info(f"Sending info for {payload['service']}")
