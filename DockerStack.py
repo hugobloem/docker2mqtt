@@ -28,6 +28,9 @@ class DockerStack:
             self.mqttClient.message_callback_add(f'{self.mqttStackTopic}/update', self.update_handler)
             self.mqttClient.message_callback_add(f'{self.mqttStackTopic}/info', self.info_handler)
 
+            # Publish availability
+            self.mqttClient.publish(f"{self.mqttStackTopic}/availability", "online", retain=True)
+
 
     def readStack(self):
         '''
@@ -55,7 +58,7 @@ class DockerStack:
         for service, val in self.stack["services"].items():
             labels = self.extractLabels(val)
             if labels["enable"]:
-                services[service] = DockerService(self.name, val["image"], self.conf, self.mqttClient)
+                services[service] = DockerService(self.name, service, val["image"], self.conf, self.mqttClient)
 
         self.services = services
         log.debug(f"Found services: {list(self.services.keys())}")
@@ -74,8 +77,12 @@ class DockerStack:
             self.services[service_name].updateCheck()
             self.upToDate[service_name] = self.services[service_name].upToDate
             self.updateable = [k for k, v in self.upToDate.items() if not v]
-        log.debug(f"Updateable services: {self.updateable}")
-
+        if any(self.updateable):
+            self.mqttClient.publish(f"{self.mqttStackTopic}/up_to_date", json.dumps({"state": "ON"}))
+            log.debug(f"Updateable services: {self.updateable}")
+        else:
+            self.mqttClient.publish(f"{self.mqttStackTopic}/up_to_date", json.dumps({"state": "OFF"}))
+            log.debug("No updateable services")
 
     def updateStackFile(self, service):
         '''
@@ -117,7 +124,6 @@ class DockerStack:
         '''
         Handle update messages.
         '''
-
         payload = {
             "service": "all",
             "update_stack": False,
@@ -134,6 +140,10 @@ class DockerStack:
         log.debug(f"MQTT message received: {topic} {message.payload}")
 
         assert topic.startswith(self.mqttStackTopic)
+        if payload["service"] != "all":
+            if payload["service"] not in self.services.keys():
+                log.warning(f"Service {payload['service']} not found in stack {self.name}\nChoose from {list(self.services.keys())}")
+                return
 
         if payload["deploy"]:
             payload["update_stack"] = True

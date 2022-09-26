@@ -36,11 +36,13 @@ if conf.mqtt:
 
     client.connect("rpi0.local", 1883, 60)
     client.loop_start()
+    client.publish(f"{conf.mqtt_topic}/availability", "online", retain=True)
 
 # Initialise stacks
 for stackFile in stackFiles:
     stack = DockerStack(stackFile.split('.')[0], stacksDir + stackFile, conf, client if conf.mqtt else None)
     stack.getServices()
+    utils.publishHAstack(stack, client if conf.mqtt else None)
 
 #     stack.updateCheck()
 #     for service in stack.updateable:

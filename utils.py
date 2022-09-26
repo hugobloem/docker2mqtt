@@ -1,4 +1,5 @@
 import logging
+import json
 
 log = logging.getLogger('main')
 
@@ -16,3 +17,39 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     log.info(msg.topic+" "+str(msg.payload))
+
+# HomeAssistant utilities
+def publishHAstack(stack, client, discovery_prefix="homeassistant"):
+    '''
+    Publish stack to HomeAssistant MQTT discovery topic
+    '''
+    device = {
+        "name": stack.name,
+        "identifiers": [stack.name],
+    }
+
+    # Update stack switch
+    client.publish(f"{discovery_prefix}/switch/{stack.name}/config", json.dumps({
+        "device": device,
+        "availability": [
+            {"topic": f"{stack.mqttStackTopic}/availability"},
+            {"topic": f"{stack.conf.mqtt_topic}/availability"},
+        ],
+        "availability_mode": "all",
+        "name": f"{stack.name} up to date",
+        "state_topic": f"{stack.mqttStackTopic}/up_to_date",
+        "value_template": "{{ value_json.state }}",
+        "unique_id": f"{stack.name}_uptodate",
+        "command_topic": f"{stack.mqttStackTopic}/update",
+    }
+    ))
+
+    # Updatea services switch
+    for service in stack.services:
+        client.publish(f"{discovery_prefix}/binary_sensor/{stack.name}/{service}/config", json.dumps({
+            "device": device,
+            "name": f"{stack.name}/{service} updateable",
+            "state_topic": f"{stack.mqttStackTopic}/services/{service}",
+            "unique_id": f"{stack.name}_{service}_uptodate",
+        }))
+    

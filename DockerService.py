@@ -6,24 +6,25 @@ from packaging.version import Version, InvalidVersion
 log = logging.getLogger('main')
 
 class DockerService:
-    def __init__(self, stack, image, conf, mqttClient=None, version=None) -> None:
+    def __init__(self, stack, service, image, conf, mqttClient=None, version=None) -> None:
         url = image.split(':')[0]
 
         if version is None:
             version = image.split(':')[1] if ':' in image else None
 
-        name = url.split('/')[-1]
+        package = url.split('/')[-1]
         organisation = url.split('/')[-2] if len(url.split('/')) > 1 else 'library'
         repository = url.split('/')[0] if len(url.split('/')) == 3 else 'dockerhub'
     
+        self.name = service
         self.stack = stack
-        self.name = name
+        self.package = package
         self.url = url
         self.organisation = organisation
         self.repository = repository
         self.conf = conf
         self.mqttClient = mqttClient
-        self.mqttServiceTopic = f"{self.conf.mqtt_topic}/{self.stack}/{self.name}"
+        self.mqttServiceTopic = f"{self.conf.mqtt_topic}/{self.stack}/services/{self.name}"
 
         try:
             self.version = Version(version)
@@ -48,12 +49,12 @@ class DockerService:
         self.latestAvailableVersion = self.getLatestVersion()
 
     def getDockerHubImages(self):
-        with requests.get(f"https://hub.docker.com/v2/repositories/{self.organisation}/{self.name}/tags?status=active&page_size=100") as r:
+        with requests.get(f"https://hub.docker.com/v2/repositories/{self.organisation}/{self.package}/tags?status=active&page_size=100") as r:
             if r.ok:
                 results = json.loads(r.text)["results"]
                 tags = [result["name"] for result in results]
             else:
-                log.warning(f"Could not download tags for {self.organisation}/{self.name}. Reason: {r.reason}")
+                log.warning(f"Could not download tags for {self.organisation}/{self.package}. Reason: {r.reason}")
         self.availableTags = tags
 
     def getLinuxServerImages(self):
@@ -61,9 +62,9 @@ class DockerService:
             if r.ok:
                 results = json.loads(r.text)["data"]["repositories"]["linuxserver"]
             else:
-                log.warning(f"Could not download tags for {self.organisation}/{self.name}. Reason: {r.reason}")
+                log.warning(f"Could not download tags for {self.organisation}/{self.package}. Reason: {r.reason}")
         for result in results:
-            if result["name"] == self.name:
+            if result["name"] == self.package:
                 self.availableTags = [result["version"]]
                 break
         if self.availableTags is None:
@@ -71,7 +72,7 @@ class DockerService:
 
     def getGithubImages(self):
         with requests.get(
-                url=f"https://api.github.com/orgs/{self.organisation}/packages/container/{self.name}/versions", 
+                url=f"https://api.github.com/orgs/{self.organisation}/packages/container/{self.package}/versions", 
                 headers={"Accept": "application/vnd.github+json", "Authorization": f"token {self.conf.githubToken}"},
             ) as r:
             if r.ok:
@@ -84,7 +85,7 @@ class DockerService:
                         else:
                             self.availableTags += [tag[0]]
             else:
-                log.warning(f"Could not download tags for {self.organisation}/{self.name}. Reason: {r.reason}")
+                log.warning(f"Could not download tags for {self.organisation}/{self.package}. Reason: {r.reason}")
 
     def extractVersionNumber(self, versionNumber, alldigits=True):
         try:
@@ -95,7 +96,7 @@ class DockerService:
 
     def getValidVersions(self):
         if self.availableTags is None:
-            log.warning(f"No available tags for {self.organisation}/{self.name}.")
+            log.warning(f"No available tags for {self.organisation}/{self.package}.")
         else:
             processedVersions = [self.extractVersionNumber(imageVersion) for imageVersion in self.availableTags]
             self.availableVersions = [Version(key) for key, val in zip(self.availableTags, processedVersions) if val is not None]
