@@ -12,6 +12,16 @@ class DctClass:
             else:
                 setattr(self, k, v)
 
+    def update(self, conf):
+        for k, v in conf.items():
+            if isinstance(v, dict):
+                if not hasattr(self, k):
+                    setattr(self, k, DctClass(v))
+                else:
+                    getattr(self, k).update(v)
+            else:
+                setattr(self, k, v)
+
 # MQTT utilities
 def on_connect(client, userdata, flags, rc):
     log.info("MQTT connected with result code "+str(rc))

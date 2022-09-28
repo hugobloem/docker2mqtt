@@ -31,7 +31,7 @@ class DockerService:
         except (InvalidVersion, TypeError):
             self.version = Version("0.0.0")
 
-        self.setuptodate(True)
+        self.set_uptodate(True)
         self.latest_available_version = None
         self.available_tags = None
 

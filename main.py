@@ -20,12 +20,13 @@ conf_dct = {
     },
 
     "homeassistant": {
+        "enabled": True,
         "discovery_prefix": "homeassistant",
         "grouping_device": None,
     },
 }
-conf_dct.update(yaml.safe_load(open("./configuration.yaml", "r")))
 conf = utils.DctClass(conf_dct)
+conf.update(yaml.safe_load(open("./configuration.yaml", "r")))
 
 # initialise logging
 log = logging.getLogger('main')
@@ -39,22 +40,27 @@ stack_files = [f for f in os.listdir(input_dir) if f.endswith(".yml") or f.endsw
 log.info(f"Found {len(stack_files)} in {input_dir}")
 
 # Setup mqtt client
-conf.mqtt = not conf.no_mqtt
-if conf.mqtt:
+if conf.mqtt.enabled:
     client = mqtt.Client()
     client.on_connect = utils.on_connect
     client.on_message = utils.on_message
 
     client.connect("rpi0.local", 1883, 60)
     client.loop_start()
-    client.publish(f"{conf.mqtt_topic}/availability", "online", retain=True)
+    client.publish(f"{conf.mqtt.topic}/availability", "online", retain=True)
 
 # Initialise stacks
 for stack_file in stack_files:
     stack = DockerStack(stack_file.split('.')[0], input_dir + stack_file, conf, client if conf.mqtt else None)
     stack.get_services()
-    if conf.ha:
-        utils.publishHAstack(stack, client if conf.mqtt else None, grouping_device=conf.grouping_device)
+
+    if conf.homeassistant.enabled:
+        utils.publish_ha_stack(
+            stack=stack,
+            client=client if conf.mqtt.enabled else None,
+            discovery_prefix=conf.homeassistant.discovery_prefix,
+            grouping_device=conf.homeassistant.grouping_device,
+        )
 
 #     stack.updateCheck()
 #     for service in stack.updateable:
