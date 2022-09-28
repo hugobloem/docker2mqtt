@@ -1,20 +1,30 @@
 import logging
 import os
-from argparse import ArgumentParser
 import paho.mqtt.client as mqtt
 
 from DockerStack import DockerStack
 import utils
 import time
+import yaml
 
-parser = ArgumentParser()
-parser.add_argument("-i", "--stacksDir", help="Directory containing stack files", required=True)
-parser.add_argument("-l", "--logLevel", help="Log level", default="INFO")
-parser.add_argument("--githubToken", help="Github token", default=os.environ.get("GITHUB_TOKEN"))
-parser.add_argument("--no-mqtt", help="Disable MQTT", action="store_true")
-parser.add_argument("--mqtt-topic", help="MQTT topic", default="docker2mqtt")
+conf_dct = {
+    "input_dir": "/stacks",
+    "log_level": "INFO",
+    "github_token": None,
 
-conf = utils.EmptyClass(parser.parse_args())
+    "mqtt": {
+        "mqtt_host": None,
+        "mqtt_port": 1883,
+        "mqtt_topic": "docker2mqtt",
+    },
+
+    "homeassistant": {
+        "discovery_prefix": "homeassistant",
+        "grouping_device": None,
+    },
+}
+conf_dct.update(yaml.safe_load(open("./configuration.yaml", "r")))
+conf = utils.DctClass(conf_dct)
 
 # initialise logging
 log = logging.getLogger('main')
@@ -42,7 +52,8 @@ if conf.mqtt:
 for stackFile in stackFiles:
     stack = DockerStack(stackFile.split('.')[0], stacksDir + stackFile, conf, client if conf.mqtt else None)
     stack.getServices()
-    utils.publishHAstack(stack, client if conf.mqtt else None)
+    if conf.ha:
+        utils.publishHAstack(stack, client if conf.mqtt else None, grouping_device=conf.grouping_device)
 
 #     stack.updateCheck()
 #     for service in stack.updateable:

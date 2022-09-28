@@ -4,11 +4,13 @@ import json
 log = logging.getLogger('main')
 
 # empty class
-class EmptyClass:
+class DctClass:
     def __init__(self, conf):
-        for attr in dir(conf):
-            if not attr.startswith('__'):
-                setattr(self, attr, getattr(conf, attr))
+        for k, v in conf.items():
+            if isinstance(v, dict):
+                setattr(self, k, DctClass(v))
+            else:
+                setattr(self, k, v)
 
 # MQTT utilities
 def on_connect(client, userdata, flags, rc):
@@ -19,13 +21,13 @@ def on_message(client, userdata, msg):
     log.info(msg.topic+" "+str(msg.payload))
 
 # HomeAssistant utilities
-def publishHAstack(stack, client, discovery_prefix="homeassistant"):
+def publishHAstack(stack, client, discovery_prefix="homeassistant", grouping_device=None):
     '''
     Publish stack to HomeAssistant MQTT discovery topic
     '''
     device = {
         "name": stack.name,
-        "identifiers": [stack.name],
+        "identifiers": [stack.name if grouping_device is None else grouping_device],
     }
 
     # Update stack switch
