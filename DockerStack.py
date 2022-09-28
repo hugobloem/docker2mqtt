@@ -8,102 +8,102 @@ from DockerService import DockerService
 log = logging.getLogger('main')
 
 class DockerStack:
-    def __init__(self, name, stackFile, conf, mqttClient=None) -> None:
+    def __init__(self, name, stack_file, conf, mqtt_client=None) -> None:
         super().__init__()
         
         self.name = name
-        self.stackFile = stackFile
+        self.stack_file = stack_file
         self.conf = conf
-        self.readStack()
-        self.upToDate = {}
+        self.read_stack()
+        self.uptodate = {}
 
-        if conf.mqtt:
+        if conf.mqtt.enabled:
             # Subscribe to MQTT topic
-            self.mqttClient = mqttClient
-            self.mqttStackTopic = f"docker2mqtt/{self.name}"
-            self.mqttClient.subscribe(f"{self.mqttStackTopic}/#")
-            log.debug(f"MQTT subscribe to '{self.mqttStackTopic}/#'")
+            self.mqtt_client = mqtt_client
+            self.mqtt_stack_topic = f"docker2mqtt/{self.name}"
+            self.mqtt_client.subscribe(f"{self.mqtt_stack_topic}/#")
+            log.debug(f"MQTT subscribe to '{self.mqtt_stack_topic}/#'")
 
             # Add callbacks
-            self.mqttClient.message_callback_add(f'{self.mqttStackTopic}/update', self.update_handler)
-            self.mqttClient.message_callback_add(f'{self.mqttStackTopic}/info', self.info_handler)
+            self.mqtt_client.message_callback_add(f'{self.mqtt_stack_topic}/update', self.update_handler)
+            self.mqtt_client.message_callback_add(f'{self.mqtt_stack_topic}/info', self.info_handler)
 
             # Publish availability
-            self.mqttClient.publish(f"{self.mqttStackTopic}/availability", "online", retain=True)
+            self.mqtt_client.publish(f"{self.mqtt_stack_topic}/availability", "online", retain=True)
 
 
-    def readStack(self):
+    def read_stack(self):
         '''
         Read a stack file.
         '''
-        log.debug(f"Reading stack file {self.stackFile}")
-        with open(self.stackFile, 'r') as f:
+        log.debug(f"Reading stack file {self.stack_file}")
+        with open(self.stack_file, 'r') as f:
             self.stack = yaml.safe_load(f)
     
 
-    def writeStack(self):
+    def write_stack(self):
         '''
         Write a stack file.
         '''
-        log.debug(f"Writing stack file {self.stackFile}")
-        with open(self.stackFile, 'w') as f:
+        log.debug(f"Writing stack file {self.stack_file}")
+        with open(self.stack_file, 'w') as f:
             yaml.safe_dump(self.stack, f)
     
 
-    def getServices(self):
+    def get_services(self):
         '''
         Get services from the stack file.
         '''
         services = {}
         for service, val in self.stack["services"].items():
-            labels = self.extractLabels(val)
+            labels = self.extract_labels(val)
             if labels["enable"]:
-                services[service] = DockerService(self.name, service, val["image"], self.conf, self.mqttClient)
+                services[service] = DockerService(self.name, service, val["image"], self.conf, self.mqtt_client)
 
         self.services = services
         log.debug(f"Found services: {list(self.services.keys())}")
 
 
-    def updateCheck(self, service_name="all"):
+    def update_check(self, service_name="all"):
         '''
         Check whether newer images are available.
         '''
         if service_name == "all":
             for name, service in self.services.items():
-                service.updateCheck()
-                self.upToDate[name] = service.upToDate
-            self.updateable = [k for k, v in self.upToDate.items() if not v]
+                service.update_check()
+                self.uptodate[name] = service.uptodate
+            self.updateable = [k for k, v in self.uptodate.items() if not v]
         else:
-            self.services[service_name].updateCheck()
-            self.upToDate[service_name] = self.services[service_name].upToDate
-            self.updateable = [k for k, v in self.upToDate.items() if not v]
+            self.services[service_name].update_check()
+            self.uptodate[service_name] = self.services[service_name].uptodate
+            self.updateable = [k for k, v in self.uptodate.items() if not v]
         if any(self.updateable):
-            self.mqttClient.publish(f"{self.mqttStackTopic}/up_to_date", json.dumps({"state": "ON"}))
+            self.mqtt_client.publish(f"{self.mqtt_stack_topic}/up_to_date", json.dumps({"state": "ON"}))
             log.debug(f"Updateable services: {self.updateable}")
         else:
-            self.mqttClient.publish(f"{self.mqttStackTopic}/up_to_date", json.dumps({"state": "OFF"}))
+            self.mqtt_client.publish(f"{self.mqtt_stack_topic}/up_to_date", json.dumps({"state": "OFF"}))
             log.debug("No updateable services")
 
-    def updateStackFile(self, service):
+    def update_stackfile(self, service):
         '''
         Update the stack file to the newer images.
         '''
-        newImage = f"{self.services[service].url}:{self.services[service].latestAvailableVersion}"
-        self.stack["services"][service]["image"] = newImage
-        self.writeStack()
-        log.info(f"Updated {service} to {newImage}")
+        new_image = f"{self.services[service].url}:{self.services[service].latest_available_version}"
+        self.stack["services"][service]["image"] = new_image
+        self.write_stack()
+        log.info(f"Updated {service} to {new_image}")
 
 
-    def deployToDocker(self):
+    def deploy_to_docker(self):
         '''
         Deploy the docker stack and set service to be up to date.
         '''
-        os.system(f"docker stack deploy -c {self.stackFile} {self.name}")
+        os.system(f"docker stack deploy -c {self.stack_file} {self.name}")
         for service in self.updateable:
             self.services[service].setUpToDate(True)
 
 
-    def extractLabels(self, config):
+    def extract_labels(self, config):
         '''
         Extract labels from the docker services
         '''
@@ -139,7 +139,7 @@ class DockerStack:
 
         log.debug(f"MQTT message received: {topic} {message.payload}")
 
-        assert topic.startswith(self.mqttStackTopic)
+        assert topic.startswith(self.mqtt_stack_topic)
         if payload["service"] != "all":
             if payload["service"] not in self.services.keys():
                 log.warning(f"Service {payload['service']} not found in stack {self.name}\nChoose from {list(self.services.keys())}")
@@ -148,20 +148,20 @@ class DockerStack:
         if payload["deploy"]:
             payload["update_stack"] = True
 
-        if topic == f"{self.mqttStackTopic}/update":
+        if topic == f"{self.mqtt_stack_topic}/update":
 
-            self.updateCheck(payload["service"])
+            self.update_check(payload["service"])
 
             if payload["update_stack"]:
 
                 if payload["service"] == "all":
                     for service in self.updateable:
-                        self.updateStackFile(service)
+                        self.update_stackfile(service)
                 else:
-                    self.updateStackFile(payload["service"])
+                    self.update_stackfile(payload["service"])
 
             if payload["deploy"]:
-                self.deployToDocker()
+                self.deploy_to_docker()
 
     
     def info_handler(self, client, userdata, message):
@@ -181,9 +181,9 @@ class DockerStack:
 
         log.debug(f"MQTT message received: {topic} {message.payload}")
 
-        assert topic.startswith(self.mqttStackTopic)
+        assert topic.startswith(self.mqtt_stack_topic)
 
-        if topic == f"{self.mqttStackTopic}/info":
+        if topic == f"{self.mqtt_stack_topic}/info":
             if payload["service"] == "all":
                 for service in self.services:
                     log.info(f"Sending info for {service}")

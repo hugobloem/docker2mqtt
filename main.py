@@ -13,9 +13,10 @@ conf_dct = {
     "github_token": None,
 
     "mqtt": {
-        "mqtt_host": None,
-        "mqtt_port": 1883,
-        "mqtt_topic": "docker2mqtt",
+        "enabled": True,
+        "host": None,
+        "port": 1883,
+        "topic": "docker2mqtt",
     },
 
     "homeassistant": {
@@ -28,14 +29,14 @@ conf = utils.DctClass(conf_dct)
 
 # initialise logging
 log = logging.getLogger('main')
-log.setLevel(getattr(logging, conf.logLevel))
+log.setLevel(getattr(logging, conf.log_level))
 log.addHandler(logging.StreamHandler())
 log.info("Starting")
 
 # Find stack files
-stacksDir = "./stacks-copy/"
-stackFiles = [f for f in os.listdir(stacksDir) if f.endswith(".yml") or f.endswith(".yaml")]
-log.info(f"Found {len(stackFiles)} in {stacksDir}")
+input_dir = "./stacks-copy/"
+stack_files = [f for f in os.listdir(input_dir) if f.endswith(".yml") or f.endswith(".yaml")]
+log.info(f"Found {len(stack_files)} in {input_dir}")
 
 # Setup mqtt client
 conf.mqtt = not conf.no_mqtt
@@ -49,16 +50,16 @@ if conf.mqtt:
     client.publish(f"{conf.mqtt_topic}/availability", "online", retain=True)
 
 # Initialise stacks
-for stackFile in stackFiles:
-    stack = DockerStack(stackFile.split('.')[0], stacksDir + stackFile, conf, client if conf.mqtt else None)
-    stack.getServices()
+for stack_file in stack_files:
+    stack = DockerStack(stack_file.split('.')[0], input_dir + stack_file, conf, client if conf.mqtt else None)
+    stack.get_services()
     if conf.ha:
         utils.publishHAstack(stack, client if conf.mqtt else None, grouping_device=conf.grouping_device)
 
 #     stack.updateCheck()
 #     for service in stack.updateable:
 #         log.info(f"Updating {service}...")
-#         stack.updateStackFile(service)
+#         stack.updatestack_file(service)
 
     # stack.pushToDocker()
 

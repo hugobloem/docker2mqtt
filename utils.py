@@ -21,7 +21,7 @@ def on_message(client, userdata, msg):
     log.info(msg.topic+" "+str(msg.payload))
 
 # HomeAssistant utilities
-def publishHAstack(stack, client, discovery_prefix="homeassistant", grouping_device=None):
+def publish_ha_stack(stack, client, discovery_prefix="homeassistant", grouping_device=None):
     '''
     Publish stack to HomeAssistant MQTT discovery topic
     '''
@@ -34,15 +34,15 @@ def publishHAstack(stack, client, discovery_prefix="homeassistant", grouping_dev
     client.publish(f"{discovery_prefix}/switch/{stack.name}/config", json.dumps({
         "device": device,
         "availability": [
-            {"topic": f"{stack.mqttStackTopic}/availability"},
-            {"topic": f"{stack.conf.mqtt_topic}/availability"},
+            {"topic": f"{stack.mqtt_stack_topic}/availability"},
+            {"topic": f"{stack.conf.mqtt.topic}/availability"},
         ],
         "availability_mode": "all",
         "name": f"{stack.name} up to date",
-        "state_topic": f"{stack.mqttStackTopic}/up_to_date",
+        "state_topic": f"{stack.mqtt_stack_topic}/up_to_date",
         "value_template": "{{ value_json.state }}",
         "unique_id": f"{stack.name}_uptodate",
-        "command_topic": f"{stack.mqttStackTopic}/update",
+        "command_topic": f"{stack.mqtt_stack_topic}/update",
     }
     ))
 
@@ -51,7 +51,7 @@ def publishHAstack(stack, client, discovery_prefix="homeassistant", grouping_dev
         client.publish(f"{discovery_prefix}/binary_sensor/{stack.name}/{service}/config", json.dumps({
             "device": device,
             "name": f"{stack.name}/{service} updateable",
-            "state_topic": f"{stack.mqttStackTopic}/services/{service}",
+            "state_topic": f"{stack.mqtt_stack_topic}/services/{service}",
             "unique_id": f"{stack.name}_{service}_uptodate",
         }))
     

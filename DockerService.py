@@ -6,7 +6,7 @@ from packaging.version import Version, InvalidVersion
 log = logging.getLogger('main')
 
 class DockerService:
-    def __init__(self, stack, service, image, conf, mqttClient=None, version=None) -> None:
+    def __init__(self, stack, service, image, conf, mqtt_client=None, version=None) -> None:
         url = image.split(':')[0]
 
         if version is None:
@@ -23,41 +23,41 @@ class DockerService:
         self.organisation = organisation
         self.repository = repository
         self.conf = conf
-        self.mqttClient = mqttClient
-        self.mqttServiceTopic = f"{self.conf.mqtt_topic}/{self.stack}/services/{self.name}"
+        self.mqtt_client = mqtt_client
+        self.mqtt_service_topic = f"{self.conf.mqtt.topic}/{self.stack}/services/{self.name}"
 
         try:
             self.version = Version(version)
         except (InvalidVersion, TypeError):
             self.version = Version("0.0.0")
 
-        self.setUpToDate(True)
-        self.latestAvailableVersion = None
-        self.availableTags = None
+        self.setuptodate(True)
+        self.latest_available_version = None
+        self.available_tags = None
 
-    def getAvailableImages(self):
+    def get_availableimages(self):
         if self.repository == 'dockerhub':
-            self.getDockerHubImages()
+            self.get_dockerhub_images()
         elif self.repository == 'lscr.io':
-            self.getLinuxServerImages()
+            self.get_linuxserver_images()
         elif self.repository == 'ghcr.io':
-            self.getGithubImages()
+            self.get_github_images()
         else:
             raise NotImplementedError(f"Unknown repository {self.repository}")
 
-        self.getValidVersions()
-        self.latestAvailableVersion = self.getLatestVersion()
+        self.get_validversions()
+        self.latest_available_version = self.get_latestversion()
 
-    def getDockerHubImages(self):
+    def get_dockerhub_images(self):
         with requests.get(f"https://hub.docker.com/v2/repositories/{self.organisation}/{self.package}/tags?status=active&page_size=100") as r:
             if r.ok:
                 results = json.loads(r.text)["results"]
                 tags = [result["name"] for result in results]
             else:
                 log.warning(f"Could not download tags for {self.organisation}/{self.package}. Reason: {r.reason}")
-        self.availableTags = tags
+        self.available_tags = tags
 
-    def getLinuxServerImages(self):
+    def get_linuxserver_images(self):
         with requests.get("https://fleet.linuxserver.io/api/v1/images") as r:
             if r.ok:
                 results = json.loads(r.text)["data"]["repositories"]["linuxserver"]
@@ -65,43 +65,43 @@ class DockerService:
                 log.warning(f"Could not download tags for {self.organisation}/{self.package}. Reason: {r.reason}")
         for result in results:
             if result["name"] == self.package:
-                self.availableTags = [result["version"]]
+                self.available_tags = [result["version"]]
                 break
-        if self.availableTags is None:
+        if self.available_tags is None:
             raise ValueError(f"Could not find image {self.url} in LinuxServer.io")
 
-    def getGithubImages(self):
+    def get_github_images(self):
         with requests.get(
                 url=f"https://api.github.com/orgs/{self.organisation}/packages/container/{self.package}/versions", 
-                headers={"Accept": "application/vnd.github+json", "Authorization": f"token {self.conf.githubToken}"},
+                headers={"Accept": "application/vnd.github+json", "Authorization": f"token {self.conf.github_token}"},
             ) as r:
             if r.ok:
                 results = r.json()
                 for result in results:
                     tag = result["metadata"]["container"]["tags"]
                     if len(tag):
-                        if self.availableTags is None:
-                            self.availableTags = [tag[0]]
+                        if self.available_tags is None:
+                            self.available_tags = [tag[0]]
                         else:
-                            self.availableTags += [tag[0]]
+                            self.available_tags += [tag[0]]
             else:
                 log.warning(f"Could not download tags for {self.organisation}/{self.package}. Reason: {r.reason}")
 
-    def extractVersionNumber(self, versionNumber, alldigits=True):
+    def extract_versionnumber(self, version_number, alldigits=True):
         try:
-            version = Version(versionNumber)
+            version = Version(version_number)
             return version
         except InvalidVersion:
             return None
 
-    def getValidVersions(self):
-        if self.availableTags is None:
+    def get_validversions(self):
+        if self.available_tags is None:
             log.warning(f"No available tags for {self.organisation}/{self.package}.")
         else:
-            processedVersions = [self.extractVersionNumber(imageVersion) for imageVersion in self.availableTags]
-            self.availableVersions = [Version(key) for key, val in zip(self.availableTags, processedVersions) if val is not None]
+            processed_versions = [self.extract_versionnumber(image_version) for image_version in self.available_tags]
+            self.availableVersions = [Version(key) for key, val in zip(self.available_tags, processed_versions) if val is not None]
 
-    def getLatestVersion(self, branch='release'):
+    def get_latestversion(self, branch='release'):
         images = self.availableVersions
         if branch == 'release':
             images = [image for image in images if not image.is_devrelease and not image.is_postrelease and not image.is_prerelease]
@@ -110,25 +110,25 @@ class DockerService:
         images.sort(reverse=True)
         return images[0]
 
-    def updateCheck(self):
-        if self.latestAvailableVersion is None:
-            self.getAvailableImages()
+    def update_check(self):
+        if self.latest_available_version is None:
+            self.get_availableimages()
 
-        if self.latestAvailableVersion > self.version:
-            self.setUpToDate(False)
+        if self.latest_available_version > self.version:
+            self.setuptodate(False)
         else:
-            self.setUpToDate(True)
+            self.setuptodate(True)
 
-    def setUpToDate(self, upToDate):
-        self.upToDate = upToDate
+    def set_uptodate(self, uptodate):
+        self.uptodate = uptodate
         
-        if self.conf.mqtt:
+        if self.conf.mqtt.enabled:
             payload = {
-                "state": "OFF" if upToDate else "ON",
+                "state": "OFF" if uptodate else "ON",
                 "version": str(self.version),
                 "available_version": str(self.version),
             }
-            if not upToDate:
-                payload["available_version"] = str(self.latestAvailableVersion)
+            if not uptodate:
+                payload["available_version"] = str(self.latest_available_version)
 
-            self.mqttClient.publish(f"{self.mqttServiceTopic}", payload=json.dumps(payload))
+            self.mqtt_client.publish(f"{self.mqtt_service_topic}", payload=json.dumps(payload))
