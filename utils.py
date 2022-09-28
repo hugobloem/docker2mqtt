@@ -36,7 +36,7 @@ def publish_ha_stack(stack, client, discovery_prefix="homeassistant", grouping_d
     Publish stack to HomeAssistant MQTT discovery topic
     '''
     device = {
-        "name": stack.name,
+        "name": stack.name if grouping_device is None else grouping_device,
         "identifiers": [stack.name if grouping_device is None else grouping_device],
     }
 
@@ -53,15 +53,17 @@ def publish_ha_stack(stack, client, discovery_prefix="homeassistant", grouping_d
         "value_template": "{{ value_json.state }}",
         "unique_id": f"{stack.name}_uptodate",
         "command_topic": f"{stack.mqtt_stack_topic}/update",
+        "payload_on": json.dumps({"service": "all", "update_stack": True, "deploy": True}),
     }
     ))
 
-    # Updatea services switch
+    # Update services switch
     for service in stack.services:
         client.publish(f"{discovery_prefix}/binary_sensor/{stack.name}/{service}/config", json.dumps({
             "device": device,
             "name": f"{stack.name}/{service} updateable",
             "state_topic": f"{stack.mqtt_stack_topic}/services/{service}",
             "unique_id": f"{stack.name}_{service}_uptodate",
+            "payload_on": json.dumps({"service": service, "update_stack": True, "deploy": True}),
         }))
     

@@ -1,2 +1,5 @@
 mqtt:
   mqtt_host: rpi0.local
+
+homeassistant:
+  grouping_device: docker2mqtt
