@@ -35,7 +35,7 @@ log.addHandler(logging.StreamHandler())
 log.info("Starting")
 
 # Find stack files
-input_dir = "./stacks-copy/"
+input_dir = "/stacks/"
 stack_files = [f for f in os.listdir(input_dir) if f.endswith(".yml") or f.endswith(".yaml")]
 log.info(f"Found {len(stack_files)} in {input_dir}")
 

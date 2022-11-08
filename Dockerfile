@@ -6,5 +6,4 @@ ADD main.py .
 ADD DockerStack.py .
 ADD DockerService.py .
 ADD utils.py .
-COPY ./stacks-copy ./stacks-copy
-CMD ["python3", "./main.py", "--stacks", "./stacks-copy"]
+CMD ["python3", "./main.py"]
