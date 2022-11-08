@@ -126,6 +126,8 @@ class DockerService:
             self.mqtt_client.publish(self.mqtt_service_topic, payload=yaml.dump(payload))
 
     def set_uptodate(self):
+        self.uptodate = self.version == self.latest_available_version
+
         if self.conf.mqtt.enabled:
             payload = {
                 "installed_version": str(self.version),

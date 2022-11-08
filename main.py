@@ -53,6 +53,7 @@ if conf.mqtt.enabled:
         exit
     client.loop_start()
     client.publish(f"{conf.mqtt.topic}/availability", "online", retain=True)
+    client.will_set(f"{conf.mqtt.topic}/availability", "offline")
 
 # Initialise stacks
 stacks = []
