@@ -33,7 +33,7 @@ class DockerService:
 
         self.latest_available_version = None
         self.available_tags = None
-        self.set_uptodate(True)
+
 
     def get_availableimages(self):
         if self.repository == 'dockerhub':
@@ -114,10 +114,7 @@ class DockerService:
         if self.latest_available_version is None:
             self.get_availableimages()
 
-        if self.latest_available_version > self.version:
-            self.set_uptodate(False)
-        else:
-            self.set_uptodate(True)
+        self.set_uptodate()
 
     def set_version(self, version):
         self.version = version
@@ -128,9 +125,7 @@ class DockerService:
             }
             self.mqtt_client.publish(self.mqtt_service_topic, payload=yaml.dump(payload))
 
-    def set_uptodate(self, uptodate):
-        self.uptodate = uptodate
-        
+    def set_uptodate(self):
         if self.conf.mqtt.enabled:
             payload = {
                 "installed_version": str(self.version),
