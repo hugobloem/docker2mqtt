@@ -98,7 +98,7 @@ class DockerStack:
         '''
         os.system(f"docker stack deploy -c {self.stack_file} {self.name}")
         for service in self.updateable:
-            self.services[service].set_uptodate(True)
+            self.services[service].set_uptodate()
 
 
     def extract_labels(self, config):
