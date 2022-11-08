@@ -44,8 +44,12 @@ if conf.mqtt.enabled:
     client = mqtt.Client()
     client.on_connect = utils.on_connect
     client.on_message = utils.on_message
-
-    client.connect("rpi0.local", 1883, 60)
+    
+    try:
+        client.connect(conf.mqtt.host, conf.mqtt.port, 60)
+    except Exception as e:
+        log.error(f"Could not connect to {conf.mqtt.host}:{conf.mqtt.port} with error: {e}")
+        exit
     client.loop_start()
     client.publish(f"{conf.mqtt.topic}/availability", "online", retain=True)
 

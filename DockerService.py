@@ -120,7 +120,7 @@ class DockerService:
             self.set_uptodate(True)
 
     def set_version(self, version):
-        self.version = Version(version)
+        self.version = version
         
         if self.conf.mqtt.enabled:
             payload = {
