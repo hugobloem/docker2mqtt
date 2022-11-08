@@ -26,7 +26,7 @@ conf_dct = {
     },
 }
 conf = utils.DctClass(conf_dct)
-conf.update(yaml.safe_load(open("./configuration.yaml", "r")))
+conf.update(yaml.safe_load(open("/configuration.yaml", "r")))
 
 # initialise logging
 log = logging.getLogger('main')
@@ -53,6 +53,7 @@ if conf.mqtt.enabled:
 for stack_file in stack_files:
     stack = DockerStack(stack_file.split('.')[0], input_dir + stack_file, conf, client if conf.mqtt else None)
     stack.get_services()
+    stack.update_check('all')
 
     if conf.homeassistant.enabled:
         utils.publish_ha_stack(

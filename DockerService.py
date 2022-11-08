@@ -24,16 +24,16 @@ class DockerService:
         self.repository = repository
         self.conf = conf
         self.mqtt_client = mqtt_client
-        self.mqtt_service_topic = f"{self.conf.mqtt.topic}/{self.stack}/services/{self.name}"
+        self.mqtt_service_topic = f"{self.conf.mqtt.topic}/{self.stack}/{self.name}/info"
 
         try:
             self.version = Version(version)
         except (InvalidVersion, TypeError):
             self.version = Version("0.0.0")
 
-        self.set_uptodate(True)
         self.latest_available_version = None
         self.available_tags = None
+        self.set_uptodate(True)
 
     def get_availableimages(self):
         if self.repository == 'dockerhub':
@@ -115,20 +115,26 @@ class DockerService:
             self.get_availableimages()
 
         if self.latest_available_version > self.version:
-            self.setuptodate(False)
+            self.set_uptodate(False)
         else:
-            self.setuptodate(True)
+            self.set_uptodate(True)
+
+    def set_version(self, version):
+        self.version = Version(version)
+        
+        if self.conf.mqtt.enabled:
+            payload = {
+                "installed_version": str(self.version),
+            }
+            self.mqtt_client.publish(self.mqtt_service_topic, payload=yaml.dump(payload))
 
     def set_uptodate(self, uptodate):
         self.uptodate = uptodate
         
         if self.conf.mqtt.enabled:
             payload = {
-                "state": "OFF" if uptodate else "ON",
-                "version": str(self.version),
-                "available_version": str(self.version),
+                "installed_version": str(self.version),
+                "latest_version": str(self.latest_available_version),
             }
-            if not uptodate:
-                payload["available_version"] = str(self.latest_available_version)
 
-            self.mqtt_client.publish(f"{self.mqtt_service_topic}", payload=json.dumps(payload))
+            self.mqtt_client.publish(self.mqtt_service_topic, payload=json.dumps(payload))

@@ -25,12 +25,8 @@ class DockerStack:
             log.debug(f"MQTT subscribe to '{self.mqtt_stack_topic}/#'")
 
             # Add callbacks
-            self.mqtt_client.message_callback_add(f'{self.mqtt_stack_topic}/update', self.update_handler)
+            self.mqtt_client.message_callback_add(f'{self.mqtt_stack_topic}/command', self.update_handler)
             self.mqtt_client.message_callback_add(f'{self.mqtt_stack_topic}/info', self.info_handler)
-
-            # Publish availability
-            self.mqtt_client.publish(f"{self.mqtt_stack_topic}/availability", "online", retain=True)
-
 
     def read_stack(self):
         '''
@@ -78,10 +74,8 @@ class DockerStack:
             self.uptodate[service_name] = self.services[service_name].uptodate
             self.updateable = [k for k, v in self.uptodate.items() if not v]
         if any(self.updateable):
-            self.mqtt_client.publish(f"{self.mqtt_stack_topic}/up_to_date", json.dumps({"state": "ON"}))
             log.debug(f"Updateable services: {self.updateable}")
         else:
-            self.mqtt_client.publish(f"{self.mqtt_stack_topic}/up_to_date", json.dumps({"state": "OFF"}))
             log.debug("No updateable services")
 
     def update_stackfile(self, service):
@@ -90,8 +84,12 @@ class DockerStack:
         '''
         new_image = f"{self.services[service].url}:{self.services[service].latest_available_version}"
         self.stack["services"][service]["image"] = new_image
-        self.write_stack()
-        log.info(f"Updated {service} to {new_image}")
+        try:
+            self.write_stack()
+            log.info(f"Updated {service} to {new_image}")
+            self.services[service].set_version(self.services[service].latest_available_version)
+        except Exception as e:
+            log.error(f"Could not update {service} to {new_image}\n{e}")
 
 
     def deploy_to_docker(self):
@@ -100,7 +98,7 @@ class DockerStack:
         '''
         os.system(f"docker stack deploy -c {self.stack_file} {self.name}")
         for service in self.updateable:
-            self.services[service].setUpToDate(True)
+            self.services[service].set_uptodate(True)
 
 
     def extract_labels(self, config):
@@ -148,7 +146,7 @@ class DockerStack:
         if payload["deploy"]:
             payload["update_stack"] = True
 
-        if topic == f"{self.mqtt_stack_topic}/update":
+        if topic == f"{self.mqtt_stack_topic}/command":
 
             self.update_check(payload["service"])
 

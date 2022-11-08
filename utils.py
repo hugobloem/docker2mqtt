@@ -40,30 +40,21 @@ def publish_ha_stack(stack, client, discovery_prefix="homeassistant", grouping_d
         "identifiers": [stack.name if grouping_device is None else grouping_device],
     }
 
-    # Update stack switch
-    client.publish(f"{discovery_prefix}/switch/{stack.name}/config", json.dumps({
-        "device": device,
-        "availability": [
-            {"topic": f"{stack.mqtt_stack_topic}/availability"},
-            {"topic": f"{stack.conf.mqtt.topic}/availability"},
-        ],
-        "availability_mode": "all",
-        "name": f"{stack.name} up to date",
-        "state_topic": f"{stack.mqtt_stack_topic}/up_to_date",
-        "value_template": "{{ value_json.state }}",
-        "unique_id": f"{stack.name}_uptodate",
-        "command_topic": f"{stack.mqtt_stack_topic}/update",
-        "payload_on": json.dumps({"service": "all", "update_stack": True, "deploy": True}),
-    }
-    ))
-
-    # Update services switch
+    # Update entity
     for service in stack.services:
-        client.publish(f"{discovery_prefix}/binary_sensor/{stack.name}/{service}/config", json.dumps({
+        service_topic = f"{stack.mqtt_stack_topic}/{service}"
+        payload = {
             "device": device,
-            "name": f"{stack.name}/{service} updateable",
-            "state_topic": f"{stack.mqtt_stack_topic}/services/{service}",
-            "unique_id": f"{stack.name}_{service}_uptodate",
-            "payload_on": json.dumps({"service": service, "update_stack": True, "deploy": True}),
-        }))
-    
+            "name": f"{stack.name}/{service}",
+            "availability": [
+                # {"topic": f"{service_topic}/availability"},
+                {"topic": f"{stack.conf.mqtt.topic}/availability"},
+            ],
+            "state_topic": f"{service_topic}/info",
+            "unique_id": f"{stack.name}_{service}",
+            "command_topic": f"{stack.mqtt_stack_topic}/command",
+            "device_class": "firmware",
+            "payload_install": json.dumps({"service": service, "update_stack": True, "deploy": True}),
+        }
+        log.debug(f"Publishing {discovery_prefix}/update/{stack.name}/{service}/config: {payload}")
+        client.publish(f"{discovery_prefix}/update/{stack.name}/{service}/config", json.dumps(payload))
