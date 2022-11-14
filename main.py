@@ -8,11 +8,12 @@ import time
 import yaml
 
 conf_dct = {
-    "input_dir": "/stacks",
-    "log_level": "INFO",
-    "github_token": None,
-    "sleep_time": 3600,
-
+    "general": {
+        "input_dir": "/stacks",
+        "log_level": "INFO",
+        "github_token": None,
+        "sleep_time": 3600,
+    },
     "mqtt": {
         "enabled": True,
         "host": None,
@@ -22,7 +23,7 @@ conf_dct = {
 
     "homeassistant": {
         "enabled": True,
-        "discovery_prefix": "homeassistant",
+        "discovery_topic": "homeassistant",
         "grouping_device": None,
     },
 }
@@ -66,7 +67,7 @@ for stack_file in stack_files:
         utils.publish_ha_stack(
             stack=stack,
             client=client if conf.mqtt.enabled else None,
-            discovery_prefix=conf.homeassistant.discovery_prefix,
+            discovery_topic=conf.homeassistant.discovery_topic,
             grouping_device=conf.homeassistant.grouping_device,
         )
 

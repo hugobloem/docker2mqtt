@@ -31,7 +31,7 @@ def on_message(client, userdata, msg):
     log.info(msg.topic+" "+str(msg.payload))
 
 # HomeAssistant utilities
-def publish_ha_stack(stack, client, discovery_prefix="homeassistant", grouping_device=None):
+def publish_ha_stack(stack, client, discovery_topic="homeassistant", grouping_device=None):
     '''
     Publish stack to HomeAssistant MQTT discovery topic
     '''
@@ -56,5 +56,5 @@ def publish_ha_stack(stack, client, discovery_prefix="homeassistant", grouping_d
             "device_class": "firmware",
             "payload_install": json.dumps({"service": service, "update_stack": True, "deploy": True}),
         }
-        log.debug(f"Publishing {discovery_prefix}/update/{stack.name}/{service}/config: {payload}")
-        client.publish(f"{discovery_prefix}/update/{stack.name}/{service}/config", json.dumps(payload))
+        log.debug(f"Publishing {discovery_topic}/update/{stack.name}/{service}/config: {payload}")
+        client.publish(f"{discovery_topic}/update/{stack.name}/{service}/config", json.dumps(payload))

@@ -164,7 +164,7 @@ class DockerStack:
     
     def info_handler(self, client, userdata, message):
         '''
-        Handle info messages. TODO: send meaningful information
+        Handle info messages.
         '''
         payload = {
             "service": "all",
