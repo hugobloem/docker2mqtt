@@ -1,4 +1,4 @@
-<div style="text-align: center;">
+<div align=center>
 <h1>docker2mqtt</h1>
 Update your Docker containers from Home Assistant with MQTT.
 </div>
