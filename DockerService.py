@@ -111,8 +111,7 @@ class DockerService:
         return images[0]
 
     def update_check(self):
-        if self.latest_available_version is None:
-            self.get_availableimages()
+        self.get_availableimages()
 
         self.set_uptodate()
 
