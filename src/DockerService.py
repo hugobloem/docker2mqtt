@@ -1,5 +1,4 @@
-import requests
-import json, yaml
+import json
 import logging
 from packaging.version import Version, InvalidVersion
 
@@ -81,7 +80,7 @@ class DockerService:
             payload = {
                 "installed_version": str(self.version),
             }
-            self.mqtt_client.publish(self.mqtt_service_topic, payload=yaml.dump(payload))
+            self.mqtt_client.publish(self.mqtt_service_topic, payload=json.dump(payload))
 
 
     def set_uptodate(self):

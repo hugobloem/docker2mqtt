@@ -3,7 +3,7 @@ import yaml
 import logging
 import json
 
-from DockerService import DockerService
+from src.DockerService import DockerService
 
 log = logging.getLogger('main')
 
@@ -22,7 +22,6 @@ class DockerStack:
             self.mqtt_client = mqtt_client
             self.mqtt_stack_topic = f"docker2mqtt/{self.name}"
             self.mqtt_client.subscribe(f"{self.mqtt_stack_topic}/#")
-            log.info(f"MQTT subscribe to '{self.mqtt_stack_topic}/#'")
 
             # Add callbacks
             self.mqtt_client.message_callback_add(f'{self.mqtt_stack_topic}/command', self.update_handler)
@@ -135,8 +134,6 @@ class DockerStack:
             log.warning(f"Could not decode payload for topic {topic}\n{message.payload}")
             return
 
-        log.debug(f"MQTT message received: {topic} {message.payload}")
-
         assert topic.startswith(self.mqtt_stack_topic)
         if payload["service"] != "all":
             if payload["service"] not in self.services.keys():
@@ -176,8 +173,6 @@ class DockerStack:
         except:
             log.warning(f"Could not decode payload for topic {topic}\n{message.payload}")
             return
-
-        log.debug(f"MQTT message received: {topic} {message.payload}")
 
         assert topic.startswith(self.mqtt_stack_topic)
 

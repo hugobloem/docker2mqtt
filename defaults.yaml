@@ -1,0 +1,17 @@
+general:
+  input_dir: /stacks/
+  log_level: INFO
+  github_token: null
+  sleep_time: 3600
+    
+mqtt:
+  enabled: true
+  host: null
+  port: 1883
+  topic: docker2mqtt
+
+
+homeassistant:
+  enabled: True
+  discovery_topic: homeassistant
+  grouping_device: null
