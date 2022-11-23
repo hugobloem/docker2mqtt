@@ -39,9 +39,8 @@ class DockerService:
 
     
     def get_latestversion(self, branch='release'):
-        self.get_availableimages()
+        images = self.repo.get_images()
 
-        images = self.available_images
         if branch == 'release':
             images = [image for image in images if not image.is_devrelease and not image.is_postrelease and not image.is_prerelease]
         else:
