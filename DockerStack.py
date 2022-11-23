@@ -22,7 +22,7 @@ class DockerStack:
             self.mqtt_client = mqtt_client
             self.mqtt_stack_topic = f"docker2mqtt/{self.name}"
             self.mqtt_client.subscribe(f"{self.mqtt_stack_topic}/#")
-            log.debug(f"MQTT subscribe to '{self.mqtt_stack_topic}/#'")
+            log.info(f"MQTT subscribe to '{self.mqtt_stack_topic}/#'")
 
             # Add callbacks
             self.mqtt_client.message_callback_add(f'{self.mqtt_stack_topic}/command', self.update_handler)
@@ -32,7 +32,7 @@ class DockerStack:
         '''
         Read a stack file.
         '''
-        log.debug(f"Reading stack file {self.stack_file}")
+        log.info(f"Reading stack file {self.stack_file}")
         with open(self.stack_file, 'r') as f:
             self.stack = yaml.safe_load(f)
     
@@ -41,7 +41,7 @@ class DockerStack:
         '''
         Write a stack file.
         '''
-        log.debug(f"Writing stack file {self.stack_file}")
+        log.info(f"Writing stack file {self.stack_file}")
         with open(self.stack_file, 'w') as f:
             yaml.safe_dump(self.stack, f)
     

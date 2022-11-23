@@ -31,9 +31,11 @@ conf = utils.DctClass(conf_dct)
 conf.update(yaml.safe_load(open("/configuration.yaml", "r")))
 
 # initialise logging
+logging.basicConfig(
+    level=conf.general.log_level,
+    format="[%(asctime)s] %(levelname)s  %(message)s",
+    datefmt="%d/%m %H:%M:%S",)
 log = logging.getLogger('main')
-log.setLevel(getattr(logging, conf.log_level))
-log.addHandler(logging.StreamHandler())
 log.info("Starting")
 
 # Find stack files
@@ -52,8 +54,8 @@ if conf.mqtt.enabled:
     except Exception as e:
         log.error(f"Could not connect to {conf.mqtt.host}:{conf.mqtt.port} with error: {e}")
         exit
+
     client.loop_start()
-    client.publish(f"{conf.mqtt.topic}/availability", "online", retain=True)
     client.will_set(f"{conf.mqtt.topic}/availability", "offline")
 
 # Initialise stacks
@@ -71,15 +73,8 @@ for stack_file in stack_files:
             grouping_device=conf.homeassistant.grouping_device,
         )
 
-#     stack.updateCheck()
-#     for service in stack.updateable:
-#         log.info(f"Updating {service}...")
-#         stack.updatestack_file(service)
-
-    # stack.pushToDocker()
-
 # Start a forever loop
 while True:
     for stack in stacks:
         stack.update_check('all')
-    time.sleep(conf.sleep_time)
+    time.sleep(conf.general.sleep_time)

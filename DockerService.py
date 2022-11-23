@@ -18,7 +18,7 @@ class DockerService:
         repository = repository.replace('.', '_')
         
         log.info(f'Loading repository {repository}')
-        repo = __import__(f"repos.{repository}")
+        repo = __import__(f"repos.{repository}", fromlist=['something'])
         self.repo = repo.Repository(organisation, package, conf)
     
         self.name = service

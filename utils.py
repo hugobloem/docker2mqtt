@@ -25,6 +25,7 @@ class DctClass:
 # MQTT utilities
 def on_connect(client, userdata, flags, rc):
     log.info("MQTT connected with result code "+str(rc))
+    client.publish(f"docker2mqtt/availability", "online", retain=True)
 
 
 def on_message(client, userdata, msg):
@@ -56,5 +57,5 @@ def publish_ha_stack(stack, client, discovery_topic="homeassistant", grouping_de
             "device_class": "firmware",
             "payload_install": json.dumps({"service": service, "update_stack": True, "deploy": True}),
         }
-        log.debug(f"Publishing {discovery_topic}/update/{stack.name}/{service}/config: {payload}")
+        log.info(f"Publishing {discovery_topic}/update/{stack.name}/{service}/config: {payload}")
         client.publish(f"{discovery_topic}/update/{stack.name}/{service}/config", json.dumps(payload))
