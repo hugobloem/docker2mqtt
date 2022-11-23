@@ -18,14 +18,14 @@ class Repository:
             ) as r:
             if r.ok:
                 results = r.json()
-            for result in results:
-                tag = result["metadata"]["container"]["tags"]
-                if len(tag):
-                    if available_tags is None:
-                        available_tags = [tag[0]]
+                for result in results:
+                    tag = result["metadata"]["container"]["tags"]
+                    if len(tag):
+                        if available_tags is None:
+                            available_tags = [tag[0]]
+                        else:
+                            available_tags += [tag[0]]
                     else:
-                        available_tags += [tag[0]]
-                else:
-                    log.warning(f"Could not download tags for {self.organisation}/{self.package}. Reason: {r.reason}")
+                        log.warning(f"Could not download tags for {self.organisation}/{self.package}. Reason: {r.reason}")
 
         return available_tags
