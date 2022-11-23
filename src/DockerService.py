@@ -39,18 +39,18 @@ class DockerService:
 
     
     def get_latestversion(self, branch='release'):
-        images = self.repo.get_images()
+        self.get_availableimages()
+        images = self.available_images
 
         if images is None:
-            log.warning(f"No available tags for {self.organisation}/{self.package}.")
             return
+
+        if branch == 'release':
+            images = [image for image in images if not image.is_devrelease and not image.is_postrelease and not image.is_prerelease]
         else:
-            if branch == 'release':
-                images = [image for image in images if not image.is_devrelease and not image.is_postrelease and not image.is_prerelease]
-            else:
-                raise NotImplementedError
-            images.sort(reverse=True)
-            self.latest_available_version = images[0]
+            raise NotImplementedError
+        images.sort(reverse=True)
+        self.latest_available_version = images[0]
 
 
     def get_availableimages(self):
@@ -58,6 +58,7 @@ class DockerService:
 
         if available_tags is None:
             log.warning(f"No available tags for {self.organisation}/{self.package}.")
+            self.available_images = None
         else:
             processed_versions = [self.extract_versionnumber(image_version) for image_version in available_tags]
             self.available_images = [Version(key) for key, val in zip(available_tags, processed_versions) if val is not None]
