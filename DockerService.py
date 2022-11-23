@@ -15,7 +15,9 @@ class DockerService:
         package = url.split('/')[-1]
         organisation = url.split('/')[-2] if len(url.split('/')) > 1 else 'library'
         repository = url.split('/')[0] if len(url.split('/')) == 3 else 'dockerhub'
-
+        repository = repository.replace('.', '_')
+        
+        log.info(f'Loading repository {repository}')
         repo = __import__(f"repos.{repository}")
         self.repo = repo.Repository(organisation, package, conf)
     
